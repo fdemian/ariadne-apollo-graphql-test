@@ -2,10 +2,10 @@ import uvicorn
 import asyncio
 from ariadne.asgi import GraphQL
 from ariadne.asgi.handlers import GraphQLTransportWSHandler
-from ariadne import MutationType, make_executable_schema
+from ariadne import MutationType, SubscriptionType, make_executable_schema
 from starlette.applications import Starlette
 from starlette.routing import (Route, WebSocketRoute)
-
+from message_subscriptions import (chat_resolver, chat_generator)
 
 type_defs = """
   type Query {
@@ -13,21 +13,20 @@ type_defs = """
   }
 
   type Message {
-    sender: String
-    message: String
-  }
-
-  type Mutation {
-    send(sender: String!, message: String!): Boolean
+    text: String!
   }
 
   type Subscription {
-    message: Message
+    chatAdded: Message
   }
 """
 
-mutation = MutationType()
-schema = make_executable_schema(type_defs, mutation)
+subscription = SubscriptionType()
+subscription.set_field("chatAdded", chat_resolver)
+subscription.set_source("chatAdded", chat_generator)
+
+schema = make_executable_schema(type_defs, subscription)
+
 
 graphql_handler = GraphQL(
   schema=schema,
